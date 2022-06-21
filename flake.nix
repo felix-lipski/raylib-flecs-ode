@@ -38,7 +38,6 @@
           shellHook = ''
             echo ${flecs}
           '';
-            # export LD_LIBRARY_PATH=${flecs}/lib
         };
       }
       );
