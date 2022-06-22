@@ -32,11 +32,11 @@
         };
       in {
         devShell = pkgs.mkShell { 
-          # buildInputs = buildInputs ++ [ flecs ];
-          buildInputs = buildInputs;
+          buildInputs = buildInputs ++ (with pkgs; [ ode ]);
+          # buildInputs = buildInputs;
 
           shellHook = ''
-            echo ${flecs}
+            echo ${pkgs.raylib}
           '';
         };
       }
