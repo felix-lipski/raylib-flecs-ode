@@ -1,7 +1,7 @@
+#include <flecs.h>
 #include "raylib.h"
 #include "header/config.h"
 #include "header/components.h"
-#include "ecs/flecs.h"
 
 #include <ode/ode.h>
 
@@ -12,7 +12,6 @@
 Camera3D camera;
 
 void BeforeDrawing(ecs_iter_t *it) {
-    /* ClearBackground((Color){ 18, 18, 18 }); */
     ClearBackground(DARKBLUE);
     UpdateCamera(&camera);
     BeginMode3D(camera);
@@ -25,7 +24,7 @@ void AfterDrawing(ecs_iter_t *it) {
 }
 
 void DrawModels(ecs_iter_t *it) {
-    Render *r    = ecs_column(it, Render, 1);
+    Render *r    = ecs_term(it, Render, 1);
     for (int i = 0; i < it->count; i++) {        
         DrawModel(r[i].model, (Vector3){0,0,0}, 1.0f, GREEN);
         DrawModelWires(r[i].model, (Vector3){0,0,0}, 1.0f, BLACK);
@@ -37,8 +36,8 @@ void ApplyPhysics(ecs_iter_t *it) {
     dWorldQuickStep(world, 1. / 60.0);
     dJointGroupEmpty(contactgroup);
 
-    Render *r     = ecs_column(it, Render, 1);
-    Physics *p    = ecs_column(it, Physics, 2);
+    Render *r     = ecs_term(it, Render, 1);
+    Physics *p    = ecs_term(it, Physics, 2);
 
     for (int i = 0; i < it->count; i++) {        
         dBodyID bid = p[i].bid;
@@ -66,10 +65,9 @@ int main(void) {
     shader.locs[SHADER_LOC_MATRIX_MODEL] = GetShaderLocation(shader, "matModel");
     shader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(shader, "viewPos");
     int amb = GetShaderLocation(shader, "ambient");
-    SetShaderValue(shader, amb, (float[4]){0.1,0.1,0.5,1.0}, SHADER_UNIFORM_VEC4);
+    SetShaderValue(shader, amb, (const float[4]){0.1f,0.1f,0.5f,1.0f}, SHADER_UNIFORM_VEC4);
 
     Model model = LoadModel("res/yellow-beam-5x.obj");
-    /* model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = LoadTexture("res/yellow-beam-texture.png"); */
     model.materials[0].shader = shader;
 
     Light light = CreateLight(LIGHT_POINT, (Vector3){ 20,20,0 }, (Vector3){ 0,0,0 }, (Color){180,150,100,0}, shader);
@@ -100,7 +98,6 @@ int main(void) {
         dGeomSetBody(geom, obj[i]);
     }
 
-
     ecs_world_t *world = ecs_init();
 
     ECS_COMPONENT(world, Position3);
@@ -108,17 +105,13 @@ int main(void) {
     ECS_COMPONENT(world, Render);
     ECS_COMPONENT(world, Physics);
 
-    ECS_TAG(world, PreUpdate);
-    ECS_TAG(world, OnUpdate);
-    ECS_TAG(world, PostUpdate);
-    ECS_TAG(world, PreDraw);
-    ECS_TAG(world, OnDraw);
-    ECS_TAG(world, PostDraw);
-
-    ECS_PIPELINE(world,CustomPipeline,PreUpdate,OnUpdate,PostUpdate,PreDraw,OnDraw,PostDraw);
-    ecs_set_pipeline(world,CustomPipeline);
-
     ECS_TAG(world, RENDERER);
+
+    ECS_SYSTEM(world, BeforeDrawing, EcsPreUpdate, RENDERER);
+    ECS_SYSTEM(world, ApplyPhysics, EcsOnUpdate, Render, Physics);
+    ECS_SYSTEM(world, DrawModels, EcsOnUpdate, Render);
+    ECS_SYSTEM(world, AfterDrawing, EcsPostUpdate, RENDERER);
+
     ECS_ENTITY(world, RenderEntity, RENDERER);
 
     ECS_ENTITY(world, Cube1, Render, Physics);
@@ -144,10 +137,6 @@ int main(void) {
     ECS_ENTITY(world, Beams, Render);
     ecs_set(world, Beams, Render, {model});
 
-    ECS_SYSTEM(world, ApplyPhysics, OnUpdate, Render, Physics);
-    ECS_SYSTEM(world, BeforeDrawing, PreDraw, RENDERER);
-    ECS_SYSTEM(world, DrawModels, OnDraw, Render);
-    ECS_SYSTEM(world, AfterDrawing, PostDraw, RENDERER);
 
     while (ecs_progress(world, 0) && !WindowShouldClose());
     CloseWindow();         

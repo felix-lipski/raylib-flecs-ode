@@ -14,12 +14,13 @@
         flecs = pkgs.pkgs.stdenv.mkDerivation rec {
           pname        = "flecs";
           version      = "2.4.8";
-          src = ".";
-          dontUnpack = true;
+          src          = ".";
+          dontUnpack   = true;
           inherit buildInputs;
           buildPhase = ''
             cp ${inputs.flecs}/flecs.c flecs.c
             cp ${inputs.flecs}/flecs.h flecs.h
+            sed -i "/#define flecs_STATIC/d" flecs.h
             gcc -o libflecs.so -shared -I . flecs.c
             ls -la >> log
           '';
@@ -32,13 +33,12 @@
         };
       in {
         devShell = pkgs.mkShell { 
-          buildInputs = buildInputs ++ (with pkgs; [ ode ]);
-          # buildInputs = buildInputs;
+          buildInputs = buildInputs ++ (with pkgs; [ ode flecs ]);
 
           shellHook = ''
             echo ${pkgs.raylib}
+            echo ${flecs}
           '';
         };
-      }
-      );
+      });
 }
