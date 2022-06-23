@@ -24,23 +24,10 @@ void AfterDrawing(ecs_iter_t *it) {
     EndDrawing();
 }
 
-float speed = 0.05;
-void Move(ecs_iter_t *it) {
-    Position3 *p = ecs_column(it, Position3, 1); 
-
-    for (int i = 0; i < it->count; i++) {   
-        if (IsKeyDown(KEY_UP))      p[i].y -= speed;
-        if (IsKeyDown(KEY_DOWN))    p[i].y += speed;
-        if (IsKeyDown(KEY_LEFT))    p[i].x -= speed;
-        if (IsKeyDown(KEY_RIGHT))   p[i].x += speed;
-    }
-}
-
 void DrawModels(ecs_iter_t *it) {
-    Position3 *p = ecs_column(it, Position3, 1); 
-    Render *r    = ecs_column(it, Render, 2);
+    Render *r    = ecs_column(it, Render, 1);
     for (int i = 0; i < it->count; i++) {        
-        DrawModel(r[i].model, p[i], 1.0f, ORANGE);
+        DrawModel(r[i].model, (Vector3){0,0,0}, 1.0f, GREEN);
         DrawModelWires(r[i].model, (Vector3){0,0,0}, 1.0f, BLACK);
     }
 }
@@ -57,14 +44,13 @@ void ApplyPhysics(ecs_iter_t *it) {
         dBodyID bid = p[i].bid;
         float* pos = (float *) dBodyGetPosition(bid);
         float* rot = (float *) dBodyGetRotation(bid);
-        setTransform(pos, rot, &r->model.transform);
-        DrawModel(r->model, (Vector3){0,0,0}, 1.0f, GREEN);
-        DrawModelWires(r->model, (Vector3){0,0,0}, 1.0f, BLACK);
+        setTransform(pos, rot, &r[i].model.transform);
     }
 }
 
 
 int main(void) {
+    SetConfigFlags(FLAG_MSAA_4X_HINT);
     InitWindow(1920, 1080, "raylib-flecs");
     SetTargetFPS(60);
 
@@ -130,7 +116,6 @@ int main(void) {
     ECS_TAG(world, PostDraw);
 
     ECS_PIPELINE(world,CustomPipeline,PreUpdate,OnUpdate,PostUpdate,PreDraw,OnDraw,PostDraw);
-
     ecs_set_pipeline(world,CustomPipeline);
 
     ECS_TAG(world, RENDERER);
@@ -156,14 +141,12 @@ int main(void) {
     ecs_set(world, Cube5, Render, {box});
     ecs_set(world, Cube5, Physics, {obj[4]});
 
-    ECS_ENTITY(world, Beams, Position3, Render);
-    ecs_set(world, Beams, Position3, {0, 0, 0});
-    ecs_set(world, Beams, Render,    {model});
+    ECS_ENTITY(world, Beams, Render);
+    ecs_set(world, Beams, Render, {model});
 
-    ECS_SYSTEM(world, Move, OnUpdate, Position3);
+    ECS_SYSTEM(world, ApplyPhysics, OnUpdate, Render, Physics);
     ECS_SYSTEM(world, BeforeDrawing, PreDraw, RENDERER);
-    ECS_SYSTEM(world, DrawModels, OnDraw, Position3, Render);
-    ECS_SYSTEM(world, ApplyPhysics, OnDraw, Render, Physics);
+    ECS_SYSTEM(world, DrawModels, OnDraw, Render);
     ECS_SYSTEM(world, AfterDrawing, PostDraw, RENDERER);
 
     while (ecs_progress(world, 0) && !WindowShouldClose());
